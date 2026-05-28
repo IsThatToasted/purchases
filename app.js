@@ -30,11 +30,23 @@ const genericOnlyPatterns = [
   /^item$/i
 ];
 
+const autoPassPatterns = [
+  /\bpatch\b/i,
+  /\b(removable patch)\b/i,
+  /\b(pocket knife|knife|blade|flipper|glyde lock|kiser|qsp|kershaw|civivi|case|buck|benchmade|spyderco|crkt|cold steel|14c28n|d2|s35vn|s30v)\b/i,
+  /\b(zippo|matches|holster|shoulder holster|key|wallet|duffle|tube bag|drawstring tube)\b/i,
+  /\b(sz:|size:)\s*\d+/i,
+  /\b[A-Z]{2,}[- ][A-Z0-9]{2,}\b/i,
+  /\b[A-Z]{2,}\d{2,}[A-Z-]*\b/i
+];
+
 const descriptiveWords = [
   "bag", "tube", "duffle", "drawstring", "wallet", "patch", "flipper", "tripper",
   "bear", "hotbox", "laptop", "kiser", "task", "maverick", "naturals", "vincent",
   "gordon", "sirron", "norris", "wolf", "timber", "tan", "charcoal", "concrete",
-  "black", "forest", "sand", "earth", "midnight", "red", "removable"
+  "black", "forest", "sand", "earth", "midnight", "red", "removable", "yzy", "shoe",
+  "sneaker", "penguin", "glyde", "lock", "pocket", "knife", "stainless", "steel", "blade",
+  "zippo", "typhoon", "matches", "shoulder", "holster", "williams", "key", "cupcake"
 ];
 
 function parseCSV(text) {
@@ -80,11 +92,16 @@ function hasDescriptiveSignal(cleanTitle) {
   const words = c.split(/\s+/).filter(Boolean);
   let score = 0;
 
+  // Explicit pass list for categories that are normally valid specific product titles.
+  if (autoPassPatterns.some(re => re.test(cleanTitle))) return true;
+
   if (cleanTitle.length >= 12) score++;
   if (words.length >= 3) score++;
   if (/[A-Za-z]\s[-–—/]\s[A-Za-z0-9]/.test(cleanTitle) || /\b\d{1,2}"\b/.test(cleanTitle)) score += 2;
   if (descriptiveWords.some(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(cleanTitle))) score++;
   if (/\b[A-Z]{2,}\b/.test(cleanTitle)) score++;
+  if (/\b[A-Z]{2,}[A-Z0-9-]*\d+[A-Z0-9-]*\b/.test(cleanTitle)) score += 2;
+  if (/\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/.test(cleanTitle) && words.length >= 2) score++;
 
   return score >= 2;
 }
@@ -97,14 +114,15 @@ function uncertainty(title, description) {
   const clean = stripAuctionNumber(t);
   const combined = `${t} ${d}`.trim();
 
-  // Strong title-based red flags. These should be reviewed even if they have an auction number.
+  // Good structured titles pass first. This prevents false flags from descriptions
+  // that mention auction rules like "shown on screen" or "no cancellations".
+  // Examples: patches, shoes with sizes, QSP/Kiser knives, Zippo matches, holsters, keys.
+  if (hasDescriptiveSignal(clean)) return { uncertain: false, reason: "Looks specific" };
+
+  // Red flags only apply after the title failed descriptive scoring.
   for (const p of uncertainPatterns) {
     if (p.re.test(t)) return { uncertain: true, reason: p.reason };
   }
-
-  // Good structured titles like `15" Duffle Tube Bag - TAN #2`,
-  // `Wallet - BLACK #1`, or `Wolf Removable Patch #6` should pass.
-  if (hasDescriptiveSignal(clean)) return { uncertain: false, reason: "Looks specific" };
 
   // Description-only screen references are only a problem when the title itself is weak.
   if (/\b(as seen on screen|shown on screen|item shown on screen)\b/i.test(combined)) {
