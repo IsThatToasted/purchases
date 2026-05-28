@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Whatnot Purchase Price Lookup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Whatnot CSV Tool</p>
+      <h1>Purchase Price Lookup</h1>
+      <p class="sub">Import your Whatnot purchase CSV, catch generic sale titles, correct them, categorize purchases, search prices, and export a documented CSV.</p>
+    </div>
+    <div class="hero-actions">
+      <label class="btn primary">
+        Import Whatnot CSV
+        <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
+      </label>
+      <button id="exportCsvBtn" class="btn" disabled>Export Clean CSV</button>
+      <button id="exportJsonBtn" class="btn" disabled>Backup Corrections</button>
+      <label class="btn ghost">
+        Restore Backup
+        <input id="jsonFile" type="file" accept=".json,application/json" hidden />
+      </label>
+    </div>
+  </header>
+
+  <main class="layout">
+    <nav class="panel app-nav">
+      <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+      <button class="nav-btn" data-page="review">Review Queue</button>
+      <button class="nav-btn" data-page="lookup">Lookup Table</button>
+    </nav>
+
+    <section class="panel stats">
+      <div class="stat"><span id="statRows">0</span><small>Rows</small></div>
+      <div class="stat warn"><span id="statUncertain">0</span><small>Need Review</small></div>
+      <div class="stat good"><span id="statCorrected">0</span><small>Corrected</small></div>
+      <div class="stat"><span id="statTotal">$0.00</span><small>Total Spend</small></div>
+    </section>
+
+    <section class="page" data-page="dashboard">
+      <section class="panel dashboard-panel">
+        <div class="section-head">
+          <div>
+            <h2>Category Dashboard</h2>
+            <p>Auto-groups purchases into knives, clothes, fragrances, accessories, and other. Click a category to jump into the lookup table.</p>
+          </div>
+        </div>
+        <div id="categoryCards" class="category-cards"></div>
+      </section>
+
+      <section class="panel rule-panel">
+        <h2>Current Flagging Logic</h2>
+        <p>Hard flags now catch generic sale-format titles before any auto-pass rule runs.</p>
+        <div class="rule-grid">
+          <div><strong>Auto-flag examples</strong><span>BUUUUYING CHOICE!, Item in hand, KNIVES! $1 STARTS, SMOKING ACCESSORIES / $1 STARTS, Random Jerky, shown on screen.</span></div>
+          <div><strong>Auto-pass examples</strong><span>Named patches, QSP/Kizer knives, Zippo Typhoon Matches, Shoulder Holster, wallets, bags, shoe-size listings.</span></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="page hidden" data-page="review">
+      <section class="panel review">
+        <div class="section-head">
+          <div>
+            <h2>Review Queue</h2>
+            <p>Listings that describe the sale instead of the product are flagged until you give them a real product title and category.</p>
+          </div>
+          <button id="saveAllBtn" class="btn primary" disabled>Save All Corrections</button>
+        </div>
+        <div id="reviewList" class="review-list empty">Import a CSV to begin.</div>
+      </section>
+    </section>
+
+    <section class="page hidden" data-page="lookup">
+      <section class="panel controls">
+        <input id="searchInput" placeholder="Search titles, sellers, categories..." />
+        <select id="filterSelect">
+          <option value="all">All items</option>
+          <option value="uncertain">Needs review</option>
+          <option value="corrected">Corrected only</option>
+          <option value="confident">Confident only</option>
+        </select>
+        <select id="categorySelect">
+          <option value="all">All categories</option>
+          <option value="Knives">Knives</option>
+          <option value="Clothes">Clothes</option>
+          <option value="Fragrances">Fragrances</option>
+          <option value="Accessories">Accessories</option>
+          <option value="Other">Other</option>
+        </select>
+        <select id="sortSelect">
+          <option value="date_desc">Newest first</option>
+          <option value="date_asc">Oldest first</option>
+          <option value="price_desc">Highest sold price</option>
+          <option value="price_asc">Lowest sold price</option>
+          <option value="title_asc">Title A-Z</option>
+          <option value="category_asc">Category A-Z</option>
+        </select>
+        <button id="clearDataBtn" class="btn danger" disabled>Clear Local Data</button>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="section-head">
+          <div>
+            <h2>Lookup Table</h2>
+            <p>Search your documented purchases and compare sold prices, totals, sellers, dates, corrected titles, and categories.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Category</th>
+                <th>Clean Title</th>
+                <th>Original Title</th>
+                <th>Seller</th>
+                <th>Sold</th>
+                <th>Total</th>
+                <th>Qty</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="9" class="empty-cell">No data loaded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <template id="reviewCardTpl">
+    <article class="review-card">
+      <div class="review-meta">
+        <span class="badge">Needs title</span>
+        <span class="muted reason"></span>
+      </div>
+      <h3 class="original"></h3>
+      <p class="desc"></p>
+      <div class="correction-grid">
+        <label>
+          Correct product title
+          <input class="correctedInput" placeholder="Example: Kizer Task Red Folding Knife" />
+        </label>
+        <label>
+          Category
+          <select class="categoryInput">
+            <option>Knives</option>
+            <option>Clothes</option>
+            <option>Fragrances</option>
+            <option>Accessories</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>
+          Notes / source
+          <input class="notesInput" placeholder="Optional: screen recording, invoice note, etc." />
+        </label>
+      </div>
+      <div class="mini">
+        <span class="seller"></span>
+        <span class="price"></span>
+        <span class="date"></span>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

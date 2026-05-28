@@ -1,28 +1,30 @@
 # Whatnot Purchase Price Lookup
 
-Static GitHub Pages app for documenting Whatnot purchases from a purchase CSV.
+Static GitHub Pages app for cleaning and documenting Whatnot purchase CSVs.
 
 ## Features
 
-- Import Whatnot purchase CSV in the browser
-- Detect generic/uncertain titles like `Knives #30`, `Item shown on Screen #27`, and `BUUUUYING CHOICE! #150`
-- Save corrected product titles in browser localStorage
-- Search and sort purchases by clean title, seller, category, date, and price
-- Export a cleaned CSV with:
-  - `clean_title`
-  - `needs_review`
-  - `review_reason`
-  - `correction_notes`
-- Export/import a JSON backup of your corrections
+- Import a Whatnot purchase CSV directly in the browser.
+- Auto-flag generic sale-format titles such as:
+  - `BUUUUYING CHOICE!`
+  - `Item in hand, KNIVES! $1 STARTS!`
+  - `SMOKING ACCESSORIES / $1 STARTS`
+  - `shown on screen`, `as seen on screen`, `blind box`, `random`, and `miscellaneous` listings.
+- Auto-pass descriptive titles such as named patches, QSP/Kizer knife titles, Zippo matches, holsters, keys, wallets, bags, and shoe-size listings.
+- Dashboard with category grouping for Knives, Clothes, Fragrances, Accessories, and Other.
+- Review queue to correct uncertain titles and set category.
+- Searchable/sortable lookup table.
+- Saves corrections in browser localStorage.
+- Export cleaned CSV with `clean_title`, `lookup_category`, `needs_review`, `review_reason`, and `correction_notes`.
+- Backup/restore corrections as JSON.
 
-## GitHub Pages hosting
+## GitHub Pages Hosting
 
-1. Create a GitHub repo.
-2. Upload `index.html`, `styles.css`, and `app.js`.
-3. Go to **Settings → Pages**.
-4. Set source to your main branch root.
-5. Open the GitHub Pages URL.
+Upload these files to a GitHub repository and enable Pages from the repo settings.
 
-## Privacy
+- `index.html`
+- `styles.css`
+- `app.js`
+- `README.md`
 
-The CSV is processed locally in your browser. No server is used. Corrections are saved in the browser's localStorage unless you export the backup JSON.
+No build step is required.
