@@ -8,11 +8,33 @@ let sourceFileName = "";
 const uncertainPatterns = [
   { re: /^knives?\s*#?\d+$/i, reason: "Generic knife listing" },
   { re: /^(item shown on screen|item in hand|shown on screen)\s*#?\d*$/i, reason: "Screen-only listing" },
+  { re: /\b(as seen on screen|shown on screen|item shown on screen|no cancellations?)\b/i, reason: "Screen-only or no-cancel listing" },
+  { re: /\b(confirmed\s*\/?\s*open blind box|open blind box|blind box)\b/i, reason: "Blind-box listing" },
   { re: /buy+ing choice/i, reason: "Choice listing" },
   { re: /^choice\s*#?\d*$/i, reason: "Choice listing" },
   { re: /^auction\s*#?\d*$/i, reason: "Generic auction title" },
   { re: /^lot\s*#?\d+$/i, reason: "Generic lot title" },
-  { re: /^.+\s#\d+$/i, reason: "May only include auction number" }
+  { re: /\$\s*1\s*starts?/i, reason: "Generic sale-start listing" },
+  { re: /^random\b/i, reason: "Random/generic listing" },
+  { re: /\bmisc(ellaneous)?\b/i, reason: "Miscellaneous listing" }
+];
+
+const genericOnlyPatterns = [
+  /^knives?$/i,
+  /^smoking accessories$/i,
+  /^jerky$/i,
+  /^patch(es)?$/i,
+  /^wallet(s)?$/i,
+  /^bags?$/i,
+  /^product$/i,
+  /^item$/i
+];
+
+const descriptiveWords = [
+  "bag", "tube", "duffle", "drawstring", "wallet", "patch", "flipper", "tripper",
+  "bear", "hotbox", "laptop", "kiser", "task", "maverick", "naturals", "vincent",
+  "gordon", "sirron", "norris", "wolf", "timber", "tan", "charcoal", "concrete",
+  "black", "forest", "sand", "earth", "midnight", "red", "removable"
 ];
 
 function parseCSV(text) {
@@ -53,16 +75,53 @@ function stripAuctionNumber(title) {
     .trim();
 }
 
+function hasDescriptiveSignal(cleanTitle) {
+  const c = cleanTitle.toLowerCase();
+  const words = c.split(/\s+/).filter(Boolean);
+  let score = 0;
+
+  if (cleanTitle.length >= 12) score++;
+  if (words.length >= 3) score++;
+  if (/[A-Za-z]\s[-–—/]\s[A-Za-z0-9]/.test(cleanTitle) || /\b\d{1,2}"\b/.test(cleanTitle)) score += 2;
+  if (descriptiveWords.some(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(cleanTitle))) score++;
+  if (/\b[A-Z]{2,}\b/.test(cleanTitle)) score++;
+
+  return score >= 2;
+}
+
 function uncertainty(title, description) {
   const t = String(title || "").trim();
   const d = String(description || "").trim();
   if (!t) return { uncertain: true, reason: "Missing title" };
+
+  const clean = stripAuctionNumber(t);
+  const combined = `${t} ${d}`.trim();
+
+  // Strong title-based red flags. These should be reviewed even if they have an auction number.
   for (const p of uncertainPatterns) {
     if (p.re.test(t)) return { uncertain: true, reason: p.reason };
   }
-  const clean = stripAuctionNumber(t);
+
+  // Good structured titles like `15" Duffle Tube Bag - TAN #2`,
+  // `Wallet - BLACK #1`, or `Wolf Removable Patch #6` should pass.
+  if (hasDescriptiveSignal(clean)) return { uncertain: false, reason: "Looks specific" };
+
+  // Description-only screen references are only a problem when the title itself is weak.
+  if (/\b(as seen on screen|shown on screen|item shown on screen)\b/i.test(combined)) {
+    return { uncertain: true, reason: "Weak title with screen-only description" };
+  }
+
+  if (genericOnlyPatterns.some(re => re.test(clean))) {
+    return { uncertain: true, reason: "Generic category title" };
+  }
+
   if (clean.length < 8) return { uncertain: true, reason: "Title too short after cleanup" };
-  if (/^\W*$/.test(d) && /#\d+$/.test(t)) return { uncertain: true, reason: "Weak description and numbered title" };
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length <= 2 && /#\d+$/i.test(t)) {
+    return { uncertain: true, reason: "Short numbered title needs review" };
+  }
+
   return { uncertain: false, reason: "Looks specific" };
 }
 
